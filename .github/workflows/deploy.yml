@@ -1,0 +1,85 @@
+name: Salesforce CI Deployment
+
+on:
+  push:
+    branches:
+      - dev
+      - uat
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to Salesforce
+    runs-on: ubuntu-latest
+
+    env:
+      SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+      SF_DEV_HUB_USERNAME: DevHub
+      PACKAGE_DIR: force-app
+      TEST_LEVEL: RunLocalTests
+
+    steps:
+      - name: ⏬ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: 📦 Install Salesforce CLI
+        run: npm install sfdx-cli --global
+
+      - name: 🔐 Authenticate with Salesforce
+        run: echo "$SFDX_AUTH_URL" | sfdx auth:sfdxurl:store --setdefaultusername -a $SF_DEV_HUB_USERNAME
+
+      - name: 🚀 Deploy Metadata to Target Org
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+            echo "Deploying to Dev Sandbox"
+            TARGET_ALIAS=DevSandbox
+          elif [[ "${{ github.ref }}" == "refs/heads/uat" ]]; then
+            echo "Deploying to UAT Sandbox"
+            TARGET_ALIAS=UATSandbox
+          else
+            echo "Deploying to Production"
+            TARGET_ALIAS=Production
+          fi
+          
+          sfdx force:source:deploy -p $PACKAGE_DIR --targetusername $TARGET_ALIAS --testlevel $TEST_LEVEL --json
+
+      - name: ✅ Run Apex Tests
+        run: |
+          sfdx force:apex:test:run --targetusername $TARGET_ALIAS --resultformat human --outputdir test-results --wait 10
+
+      - name: 📥 Upload Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: apex-test-results
+          path: test-results
+
+      # OPTIONAL: Notifications
+      - name: 📣 Slack Notification (optional)
+        if: failure()
+        run: echo "Slack alert setup here"
+
+      - name: 📧 Email Notification (optional)
+        if: failure()
+        run: echo "Send email to dev team"
+
+      - name: Send email if tests failed
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: 'Salesforce Deployment Failed ⚠️'
+          to: ${{ secrets.EMAIL_TO }}
+          from: GitHub Action <${{ secrets.EMAIL_USERNAME }}>
+          body: |
+            ❌ Deployment failed on branch ${{ github.ref_name }}
+            
+            Please check the job logs here: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
