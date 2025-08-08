@@ -1,0 +1,10 @@
+{
+  "orgName": "My Scratch Org",
+  "edition": "Developer",
+  "features": ["AuthorApex", "RecordTypes"],
+  "settings": {
+    "orgPreferenceSettings": {
+      "s1DesktopEnabled": true
+    }
+  }
+}
