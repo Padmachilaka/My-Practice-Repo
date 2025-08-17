@@ -38,10 +38,4 @@ Run tests:
 sfdx force:apex:test:run --resultformat human --outputdir test-results --wait 10
  ## Step 8: Deploy to Sandbox 
 sfdx force:source:deploy -u SandboxOrg -p force-app
- Deliverables
-Salesforce DX project structure
-Scratch org with changes deployed
-Apex Class or LWC modifications
-All changes pushed to GitHub
-This README.md file as documentation
-
+ 
